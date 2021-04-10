@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -11,6 +12,12 @@
 </head>
 <body>
     <?php
+    /* logout */
+    if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'logout')
+    {
+        session_destroy();
+        header("Location: index.php");
+    }
     if(isset($_REQUEST['action']) && isset($_REQUEST['email']) && isset($_REQUEST['password']))
     {
             $action = $_REQUEST['action'];
@@ -50,13 +57,21 @@
                 $userRow = $result->fetch_assoc();
                 $passwordCorrect = password_verify($password, $userRow['password']);
                 if($passwordCorrect)
+                {
                     echo "Zalogowano poprawnie";
+                    $_SESSION['user_id'] = $userRow['id'];
+                    $_SESSION['user_email'] = $email;
+                }
                 else
                     echo "Nieprawidłowy login lub hasło";
             }
+
+            
+
     }
     ?>
     <div class="container">
+    <?php if(!isset($_SESSION['user_id']) && !isset($_SESSION['user_email'])) : ?>
         <div class="row mt-5">
             <div class="col-4 offset-4">
                 <h1 class="text-center mb-3">Zarejestruj się</h1>
@@ -83,6 +98,20 @@
                 </form>
             </div>
         </div>
+        <?php else : ?>
+        <div class="row mt-5">
+            <div class="col-4 offset-4">
+                <h1>Witaj ponownie</h1>
+                <p>Id użytkownika: <?php echo $_SESSION['user_id']; ?></p>
+                <p>Email użytkownika: <?php echo $_SESSION['user_email']; ?></p>
+                <form action="index.php" method="post">
+                    <input type="hidden" name="action" value="logout">
+                    <button type="submit" class="btn btn-primary w-100">Wyloguj</button>
+                </form>
+                
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" 
     integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
