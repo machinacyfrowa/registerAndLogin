@@ -10,6 +10,52 @@
         integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
 </head>
 <body>
+    <?php
+    if(isset($_REQUEST['action']) && isset($_REQUEST['email']) && isset($_REQUEST['password']))
+    {
+            $action = $_REQUEST['action'];
+            $email = $_REQUEST['email'];
+            $password = $_REQUEST['password'];
+
+            $db = new mysqli('localhost', 'root', '', 'registerandlogin');
+            if ($db->errno) 
+            {
+                throw new RuntimeException('mysqli connection error: ' . $db->error);
+            }
+            /* register */
+            if($action == 'register')
+            {
+                $query = $db->prepare("INSERT INTO user (id, email, password) VALUES (NULL, ?, ?)");
+                $password = password_hash($password, PASSWORD_ARGON2I);
+                $query->bind_param('ss', $email, $password);
+                $result = $query->execute();
+                if($result)
+                    echo "Konto utworzono poprawnie.";
+                else
+                {
+                    if($query->errno == 1062)
+                        echo "Konto o takim adresie już istnieje";
+                    else
+                        echo "Błąd podczas tworzenia konta";
+                }
+            }
+
+            /* login */
+            if($action == 'login')
+            {
+                $query = $db->prepare("SELECT id, password FROM user WHERE email = ? LIMIT 1");
+                $query->bind_param('s', $email);
+                $query->execute();
+                $result = $query->get_result();
+                $userRow = $result->fetch_assoc();
+                $passwordCorrect = password_verify($password, $userRow['password']);
+                if($passwordCorrect)
+                    echo "Zalogowano poprawnie";
+                else
+                    echo "Nieprawidłowy login lub hasło";
+            }
+    }
+    ?>
     <div class="container">
         <div class="row mt-5">
             <div class="col-4 offset-4">
