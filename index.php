@@ -16,7 +16,7 @@ if (isset($_REQUEST['action'])) {
         throw new RuntimeException('mysqli connection error: ' . $db->error);
     switch ($action) {
         case 'logout':
-            $smarty->assign('error', "wylogowano poprawnie");
+            $smarty->assign('info', "wylogowano poprawnie");
             $smarty->display('index.tpl');
             break;
         case 'register':
@@ -30,7 +30,7 @@ if (isset($_REQUEST['action'])) {
                 $query->bind_param('ss', $email, $password);
                 $result = $query->execute();
                 if ($result)
-                    $smarty->assign('error', "Konto utworzono poprawnie.");
+                    $smarty->assign('info', "Konto utworzono poprawnie.");
                 else {
                     if ($query->errno == 1062)
                         $smarty->assign('error', "Konto o takim adresie już istnieje.");
@@ -53,7 +53,7 @@ if (isset($_REQUEST['action'])) {
                 $userRow = $result->fetch_assoc();
                 $passwordCorrect = password_verify($password, $userRow['password']);
                 if ($passwordCorrect) {
-                    $smarty->assign('error', "Zalogowano poprawnie");
+                    $smarty->assign('info', "Zalogowano poprawnie");
                     $_SESSION['user_id'] = $userRow['id'];
                     $_SESSION['user_email'] = $email;
                     $smarty->assign('id', $_SESSION['user_id']);

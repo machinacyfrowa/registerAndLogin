@@ -16,3 +16,8 @@
                 {$error}
             </div>    
         {/if}
+        {if isset($info)}
+            <div class="alert alert-info" role="alert">
+                {$info}
+            </div>    
+        {/if}
