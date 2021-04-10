@@ -1,119 +1,80 @@
-<?php session_start(); ?>
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" 
-        rel="stylesheet" 
-        integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
-</head>
-<body>
-    <?php
-    /* logout */
-    if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'logout')
-    {
-        session_destroy();
-        header("Location: index.php");
-    }
-    if(isset($_REQUEST['action']) && isset($_REQUEST['email']) && isset($_REQUEST['password']))
-    {
-            $action = $_REQUEST['action'];
-            $email = $_REQUEST['email'];
-            $password = $_REQUEST['password'];
+<?php
+session_start();
+require('smarty/Smarty.class.php');
+$smarty = new Smarty();
 
-            $db = new mysqli('localhost', 'root', '', 'registerandlogin');
-            if ($db->errno) 
-            {
-                throw new RuntimeException('mysqli connection error: ' . $db->error);
-            }
-            /* register */
-            if($action == 'register')
-            {
+$smarty->setTemplateDir('smarty/templates');
+$smarty->setCompileDir('smarty/templates_c');
+$smarty->setCacheDir('smarty/cache');
+$smarty->setConfigDir('smarty/configs');
+
+if (isset($_REQUEST['action'])) {
+    //przetwórz polecenie od użytkownika
+    $action = $_REQUEST['action'];
+    $db = new mysqli('localhost', 'root', '', 'registerandlogin');
+    if ($db->errno)
+        throw new RuntimeException('mysqli connection error: ' . $db->error);
+    switch ($action) {
+        case 'logout':
+            $smarty->assign('error', "wylogowano poprawnie");
+            $smarty->display('index.tpl');
+            break;
+        case 'register':
+            if (!isset($_REQUEST['email']) && !isset($_REQUEST['password']))
+                $smarty->display('register.tpl');
+            else {
+                $email = $_REQUEST['email'];
+                $password = $_REQUEST['password'];
                 $query = $db->prepare("INSERT INTO user (id, email, password) VALUES (NULL, ?, ?)");
                 $password = password_hash($password, PASSWORD_ARGON2I);
                 $query->bind_param('ss', $email, $password);
                 $result = $query->execute();
-                if($result)
-                    echo "Konto utworzono poprawnie.";
-                else
-                {
-                    if($query->errno == 1062)
-                        echo "Konto o takim adresie już istnieje";
+                if ($result)
+                    $smarty->assign('error', "Konto utworzono poprawnie.");
+                else {
+                    if ($query->errno == 1062)
+                        $smarty->assign('error', "Konto o takim adresie już istnieje.");
                     else
-                        echo "Błąd podczas tworzenia konta";
+                        $smarty->assign('error', "Błąd podczas tworzenia konta.");
                 }
+                $smarty->display('index.tpl');
             }
-
-            /* login */
-            if($action == 'login')
-            {
+            break;
+        case 'login':
+            if (!isset($_REQUEST['email']) && !isset($_REQUEST['password']))
+                $smarty->display('login.tpl');
+            else {
+                $email = $_REQUEST['email'];
+                $password = $_REQUEST['password'];
                 $query = $db->prepare("SELECT id, password FROM user WHERE email = ? LIMIT 1");
                 $query->bind_param('s', $email);
                 $query->execute();
                 $result = $query->get_result();
                 $userRow = $result->fetch_assoc();
                 $passwordCorrect = password_verify($password, $userRow['password']);
-                if($passwordCorrect)
-                {
-                    echo "Zalogowano poprawnie";
+                if ($passwordCorrect) {
+                    $smarty->assign('error', "Zalogowano poprawnie");
                     $_SESSION['user_id'] = $userRow['id'];
                     $_SESSION['user_email'] = $email;
+                    $smarty->assign('id', $_SESSION['user_id']);
+                    $smarty->assign('email', $_SESSION['user_email']);
+                    $smarty->display('internal.tpl');
+                } else {
+                    $smarty->assign('error', "Nieprawidłowy login lub hasło");
+                    $smarty->display('index.tpl');
                 }
-                else
-                    echo "Nieprawidłowy login lub hasło";
             }
-
-            
-
+            break;
+        default:
+            throw new RuntimeException("Nieprawidłowy parametr 'action'");
+            break;
     }
-    ?>
-    <div class="container">
-    <?php if(!isset($_SESSION['user_id']) && !isset($_SESSION['user_email'])) : ?>
-        <div class="row mt-5">
-            <div class="col-4 offset-4">
-                <h1 class="text-center mb-3">Zarejestruj się</h1>
-                <form action="index.php" method="post">
-                    <input type="hidden" name="action" value="register">
-                    <label class="form-label" for="emailInput">Adres e-mail:</label>
-                    <input class="form-control mb-3" type="email" name="email" id="emailInput" required>
-                    <label class="form-label" for="passwordInput">Hasło:</label>
-                    <input class="form-control mb-3" type="password" name="password" id="passwordInput">
-                    <button class="btn btn-primary w-100" type="submit">Załóż konto</button>
-                </form>
-            </div>
-        </div>
-        <div class="row mt-5">
-            <div class="col-4 offset-4">
-                <h1 class="text-center mb-3">Zaloguj się</h1>
-                <form action="index.php" method="post">
-                    <input type="hidden" name="action" value="login">
-                    <label class="form-label" for="emailInput">Adres e-mail:</label>
-                    <input class="form-control mb-3" type="email" name="email" id="emailInput" required>
-                    <label class="form-label" for="passwordInput">Hasło:</label>
-                    <input class="form-control mb-3" type="password" name="password" id="passwordInput">
-                    <button class="btn btn-primary w-100" type="submit">Zaloguj</button>
-                </form>
-            </div>
-        </div>
-        <?php else : ?>
-        <div class="row mt-5">
-            <div class="col-4 offset-4">
-                <h1>Witaj ponownie</h1>
-                <p>Id użytkownika: <?php echo $_SESSION['user_id']; ?></p>
-                <p>Email użytkownika: <?php echo $_SESSION['user_email']; ?></p>
-                <form action="index.php" method="post">
-                    <input type="hidden" name="action" value="logout">
-                    <button type="submit" class="btn btn-primary w-100">Wyloguj</button>
-                </form>
-                
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" 
-    integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
-</body>
-</html>
+} else if (isset($_SESSION['user_id'])) {
+    //jesteśmy zalogowani - pokaż stronę wewnętrzną
+    $smarty->assign('id', $_SESSION['user_id']);
+    $smarty->assign('email', $_SESSION['user_email']);
+    $smarty->display('internal.tpl');
+} else {
+    //nie jesteśmy zalogowani - pokaż stronę startową
+    $smarty->display('index.tpl');
+}
